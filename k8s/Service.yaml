@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-k8s-service
+  namespace : dev
+spec:
+  selector:
+    app: hello-k8s
+  ports:
+    - protocol: TCP
+      port: 80       # port du Service
+      targetPort: 80 # port du container
+  type: ClusterIP   # interne au cluster
+
