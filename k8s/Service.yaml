@@ -4,8 +4,10 @@ metadata:
   name: mini-store-service
   namespace: dev
 spec:
+  type: NodePort   
   selector:
     app: mini-store
   ports:
   - port: 80
     targetPort: 5000
+    nodePort: 30081
