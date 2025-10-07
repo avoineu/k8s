@@ -23,16 +23,11 @@ spec:
           value: "store_admin"
         - name: MONGO_INITDB_ROOT_PASSWORD
           value: "store_pass"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mongodb-service
-  namespace: dev
-spec:
-  selector:
-    app: mongodb
-  ports:
-    - protocol: TCP
-      port: 27017
-      targetPort: 27017
+        volumeMounts:
+        - name: mongo-storage
+          mountPath: /data/db   # emplacement des données MongoDB
+      volumes:
+      - name: mongo-storage
+        persistentVolumeClaim:
+          claimName: mongo-pvc  # PVC défini dans mongo-pvc.yaml
+
