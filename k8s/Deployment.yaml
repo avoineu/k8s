@@ -1,23 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-k8s-deployment
-  namespace : dev
-  labels:
-    app: hello-k8s
+  name: mini-store-deployment
+  namespace: dev
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: hello-k8s
+      app: mini-store
   template:
     metadata:
       labels:
-        app: hello-k8s
+        app: mini-store
     spec:
       containers:
-      - name: hello-k8s
-        image: avoine/hello-k8s:1.0
+      - name: mini-store
+        image: samirbch/mini-store:latest
         ports:
-        - containerPort: 80
-
+        - containerPort: 5000
