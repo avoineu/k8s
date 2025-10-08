@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main  # ou master selon ta branche
+      - main
 
 jobs:
   test-build-deploy:
@@ -40,7 +40,6 @@ jobs:
       run: |
         docker push samirbch/mini-store:v${{ github.sha }}
 
-    # ✅ Étape temporaire pour vérifier que les secrets existent
     - name: Check secrets presence
       run: |
         if [ -z "${{ secrets.DOCKER_USERNAME }}" ]; then
@@ -59,11 +58,13 @@ jobs:
         echo "✅ Secrets test passed"
 
     - name: Set up Kubeconfig
-      if: ${{ secrets.KUBE_CONFIG != '' }}
+      if: ${{ env.HAS_KUBE_CONFIG == 'true' }}
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
+      env:
+        HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG != '' && 'true' || 'false' }}
 
     - name: Deploy to Kubernetes test
       run: |

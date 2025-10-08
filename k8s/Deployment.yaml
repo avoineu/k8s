@@ -15,11 +15,11 @@ spec:
     spec:
       containers:
       - name: mini-store
-        image: avoine/mini-store:v5
+        image: samirbch/mini-store:v4
         ports:
         - containerPort: 5000
         env:
         - name: MONGO_URI
           value: "mongodb://mongodb-0.mongodb-service.dev.svc.cluster.local:27017,mongodb-1.mongodb-service.dev.svc.cluster.local:27017,mongodb-2.mongodb-service.dev.svc.cluster.local:27017/store?replicaSet=rs0"
-
-
+      imagePullSecrets:
+      - name: docker-secret   # ← ajouter ici
