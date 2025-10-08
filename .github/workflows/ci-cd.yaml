@@ -40,7 +40,6 @@ jobs:
       run: |
         docker push samirbch/mini-store:v${{ github.sha }}
 
-    # 🧩 Vérification des secrets
     - name: Check secrets presence
       run: |
         if [ -z "${{ secrets.DOCKER_USERNAME }}" ]; then
@@ -51,27 +50,4 @@ jobs:
           echo "❌ DOCKER_PASSWORD secret missing"
           exit 1
         fi
-        if [ -z "${{ secrets.KUBE_CONFIG }}" ]; then
-          echo "⚠️ KUBE_CONFIG secret missing (ok si cluster local)"
-          echo "HAS_KUBE_CONFIG=false" >> $GITHUB_ENV
-        else
-          echo "✅ KUBE_CONFIG secret found"
-          echo "HAS_KUBE_CONFIG=true" >> $GITHUB_ENV
-        fi
-
-    # 🧩 Configuration du kubeconfig (connexion cluster)
-    - name: Set up Kubeconfig
-      if: env.HAS_KUBE_CONFIG == 'true'
-      run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
-        chmod 600 $HOME/.kube/config
-
-    # 🚀 Déploiement automatique dans le namespace test
-    - name: Deploy to Kubernetes test
-      if: env.HAS_KUBE_CONFIG == 'true'
-      run: |
-        echo "🔄 Mise à jour du déploiement mini-store dans le namespace test..."
-        kubectl set image deployment/mini-store-deployment mini-store=samirbch/mini-store:v${{ github.sha }} -n test
-        kubectl rollout status deployment/mini-store-deployment -n test
-        echo "✅ Déploiement terminé avec succès dans le namespace test !"
+        echo "✅ Secrets test passed"
