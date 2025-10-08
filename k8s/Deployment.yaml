@@ -4,7 +4,7 @@ metadata:
   name: mini-store-deployment
   namespace: dev
 spec:
-  replicas: 2 ##
+  replicas: 2
   selector:
     matchLabels:
       app: mini-store
@@ -15,15 +15,11 @@ spec:
     spec:
       containers:
       - name: mini-store
-        image: avoine/mini-store:v3   
+        image: avoine/mini-store:v5
         ports:
         - containerPort: 5000
-        env:                          
-        - name: MONGO_USER
-          value: "store_admin"
-        - name: MONGO_PASSWORD
-          value: "store_pass"
-        - name: MONGO_HOST
-          value: "mongodb-service"
-        - name: MONGO_PORT
-          value: "27017"
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb-0.mongodb-service.dev.svc.cluster.local:27017,mongodb-1.mongodb-service.dev.svc.cluster.local:27017,mongodb-2.mongodb-service.dev.svc.cluster.local:27017/store?replicaSet=rs0"
+
+

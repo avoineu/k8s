@@ -4,6 +4,7 @@ metadata:
   name: mongodb-service
   namespace: dev
 spec:
+  clusterIP: None 
   selector:
     app: mongodb
   ports:
