@@ -65,7 +65,3 @@ jobs:
         chmod 600 $HOME/.kube/config
       env:
         HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG != '' && 'true' || 'false' }}
-
-    - name: Deploy to Kubernetes test
-      run: |
-        kubectl set image deployment/mini-store-deployment mini-store=samirbch/mini-store:v${{ github.sha }} -n dev
