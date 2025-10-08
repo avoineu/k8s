@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main
+      - main  # déclenche le workflow sur chaque push sur main
 
 jobs:
   test-build-deploy:
@@ -40,6 +40,7 @@ jobs:
       run: |
         docker push samirbch/mini-store:v${{ github.sha }}
 
+    # 🧩 Vérification des secrets
     - name: Check secrets presence
       run: |
         if [ -z "${{ secrets.DOCKER_USERNAME }}" ]; then
@@ -57,11 +58,19 @@ jobs:
         fi
         echo "✅ Secrets test passed"
 
+    # 🧩 Préparation du kubeconfig (connexion cluster)
     - name: Set up Kubeconfig
-      if: ${{ env.HAS_KUBE_CONFIG == 'true' }}
+      if: ${{ secrets.KUBE_CONFIG != '' }}
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
-      env:
-        HAS_KUBE_CONFIG: ${{ secrets.KUBE_CONFIG != '' && 'true' || 'false' }}
+
+    # 🚀 Déploiement automatique dans le namespace test
+    - name: Deploy to Kubernetes test
+      if: success() && ${{ secrets.KUBE_CONFIG != '' }}
+      run: |
+        echo "🔄 Mise à jour du déploiement mini-store dans le namespace test..."
+        kubectl set image deployment/mini-store-deployment mini-store=samirbch/mini-store:v${{ github.sha }} -n test
+        kubectl rollout status deployment/mini-store-deployment -n test
+        echo "✅ Déploiement terminé avec succès dans le namespace test !"
