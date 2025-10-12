@@ -1,6 +1,9 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from app.app import app
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../app")))
+from app import app  # <- c’est suffisant
 
 @pytest.fixture
 def client():
@@ -15,7 +18,7 @@ def mock_mongo():
         {"name": "Laptop", "price": 1200},
         {"name": "T-shirt Kubernetes", "price": 25},
     ]
-    with patch("app.app.products_collection") as mock_collection:
+    with patch("app.products_collection") as mock_collection:
         mock_collection.find.return_value = products
         yield mock_collection
 
