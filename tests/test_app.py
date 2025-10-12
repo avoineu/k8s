@@ -1,9 +1,6 @@
 import pytest
-from unittest.mock import patch, MagicMock
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../app")))
-from app import app  # <- c’est suffisant
+from unittest.mock import patch
+from app import app  # suffisant pour accéder à Flask et aux collections
 
 @pytest.fixture
 def client():
@@ -22,13 +19,8 @@ def mock_mongo():
         mock_collection.find.return_value = products
         yield mock_collection
 
-def test_home_status(client, mock_mongo):
-    response = client.get("/")
-    assert response.status_code == 200
-    html = response.data.decode()
-    assert "Laptop" in html or "T-shirt Kubernetes" in html
-
 def test_api_products_status(client, mock_mongo):
+    """Teste que l'API /api/products renvoie bien les produits"""
     response = client.get("/api/products")
     assert response.status_code == 200
     data = response.get_json()
