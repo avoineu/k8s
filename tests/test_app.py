@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import patch
-from app import app  # suffisant pour accéder à Flask et aux collections
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../app")))
+from app import app 
 
 @pytest.fixture
 def client():
