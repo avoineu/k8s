@@ -1,2 +1,34 @@
-def test_basic():
-    assert 2 + 2 == 4
+import pytest
+from unittest.mock import patch, MagicMock
+from app.app import app
+
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
+
+@pytest.fixture
+def mock_mongo():
+    """Mock des produits MongoDB"""
+    products = [
+        {"name": "Laptop", "price": 1200},
+        {"name": "T-shirt Kubernetes", "price": 25},
+    ]
+    with patch("app.app.products_collection") as mock_collection:
+        mock_collection.find.return_value = products
+        yield mock_collection
+
+def test_home_status(client, mock_mongo):
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.data.decode()
+    assert "Laptop" in html or "T-shirt Kubernetes" in html
+
+def test_api_products_status(client, mock_mongo):
+    response = client.get("/api/products")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert isinstance(data, list)
+    assert any(p["name"] == "Laptop" for p in data)
+    assert all("name" in p and "price" in p for p in data)
