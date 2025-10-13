@@ -22,5 +22,7 @@ def get_products():
     products = list(products_collection.find({}, {"_id": 0}))
     return jsonify(products)
 
+print("Hello world! Version test:")   
+   
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
