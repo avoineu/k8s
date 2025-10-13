@@ -2,13 +2,13 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: mini-store-ingress
-  namespace: dev
+  namespace: test
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
-  - host: dev.localhost
+  - host: test.localhost
     http:
       paths:
       - path: /
