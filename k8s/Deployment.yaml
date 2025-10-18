@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mini-store-deployment
-  namespace: dev
+  
 spec:
   replicas: 2
   selector:
@@ -21,5 +21,7 @@ spec:
         env:
         - name: MONGO_URI
           value: "mongodb://mongodb-0.mongodb-service.dev.svc.cluster.local:27017,mongodb-1.mongodb-service.dev.svc.cluster.local:27017,mongodb-2.mongodb-service.dev.svc.cluster.local:27017/store?replicaSet=rs0"
+        - name: REDIS_HOST
+          value: "redis.dev.svc.cluster.local"
       imagePullSecrets:
       - name: docker-secret   # ← ajouter ici
