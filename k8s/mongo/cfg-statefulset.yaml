@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-cfg
+  namespace: dev
+spec:
+  serviceName: mongo-cfg-svc
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mongo-cfg
+  template:
+    metadata:
+      labels:
+        app: mongo-cfg
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:7
+        command: ["mongod", "--configsvr", "--replSet", "cfgReplSet", "--port", "27019", "--bind_ip_all"]
+        ports:
+        - containerPort: 27019
+        volumeMounts:
+        - name: mongo-cfg-data
+          mountPath: /data/db
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-cfg-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi

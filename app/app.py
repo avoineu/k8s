@@ -3,15 +3,15 @@ import socket
 import os
 import json
 from pymongo import MongoClient
-import redis  # ← on importe redis
+import redis
 
 app = Flask(__name__)
 
 # URI du replica set
 MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
-db = client["store"]
-products_collection = db["products"]
+db = client["shop"]
+products_collection = db["items"]
 
 # Redis setup
 REDIS_HOST = os.getenv("REDIS_HOST", "redis.dev.svc.cluster.local")  # nom du service Redis dans k8s
@@ -21,26 +21,21 @@ cache = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 @app.route('/')
 def home():
     hostname = socket.gethostname()
-    # on récupère la liste des produits depuis Redis si elle existe
-    cached = cache.get("products")
+    cached = cache.get("items")
     if cached:
         products = json.loads(cached)
-        print("⚡️ Produits depuis Redis cache")
     else:
         products = list(products_collection.find({}, {"_id": 0}))
-        cache.set("products", json.dumps(products), ex=300)  # TTL 5 min
-        print("💾 Produits mis en cache dans Redis")
+        cache.set("items", json.dumps(products), ex=300)  # TTL 5 min
     return render_template('index.html', pod_name=hostname, products=products)
 
-@app.route('/api/products')
+@app.route('/api/items')
 def get_products():
-    cached = cache.get("products")
+    cached = cache.get("items")
     if cached:
-        print("⚡️ Returning products from Redis cache")
-        return cached  # JSON string
+        return cached 
     products = list(products_collection.find({}, {"_id": 0}))
-    cache.set("products", json.dumps(products), ex=300)  # TTL 5 min
-    print("💾 Products cached in Redis")
+    cache.set("items", json.dumps(products), ex=300)  # TTL 5 min
     return jsonify(products)
 
 print("Hello world! Version test:")

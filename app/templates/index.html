@@ -21,18 +21,18 @@
 </head>
 <body>
     <h1>Bienvenue sur Mini Store 🛍️</h1>
-    <p>Voici nos produits ttttttttttt :</p>
-    <ul id="product-list"></ul>
+    <p>Voici nos produits :</p>
+    <ul id="items-list"></ul>
 
     <div class="pod-info">
         <p>Served by pod: <strong>{{ pod_name }}</strong></p>
     </div>
 
     <script>
-        fetch("/api/products")
+        fetch("/api/items")
             .then(res => res.json())
             .then(data => {
-                const list = document.getElementById("product-list");
+                const list = document.getElementById("items-list");
                 data.forEach(p => {
                     const li = document.createElement("li");
                     li.textContent = `${p.name} — ${p.price} €`;
