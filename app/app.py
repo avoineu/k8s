@@ -33,10 +33,11 @@ def home():
 def get_products():
     cached = cache.get("items")
     if cached:
-        return cached 
+        return jsonify(json.loads(cached))  # ← transforme la chaîne en JSON Flask
     products = list(products_collection.find({}, {"_id": 0}))
-    cache.set("items", json.dumps(products), ex=300)  # TTL 5 min
+    cache.set("items", json.dumps(products), ex=300)
     return jsonify(products)
+
 
 print("Hello world! Version test:")
 

@@ -20,7 +20,7 @@ spec:
         - containerPort: 5000
         env:
         - name: MONGO_URI
-          value: "mongodb://mongos-svc.dev.svc.cluster.local:27018/store"
+          value: "mongodb://mongos-svc.dev.svc.cluster.local:27018/shop"
         - name: REDIS_HOST
           value: "redis.dev.svc.cluster.local"
       imagePullSecrets:
