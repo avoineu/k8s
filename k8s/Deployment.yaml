@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: mini-store
-        image: samirbch/mini-store:v13
+        image: samirbch/mini-store:v20
         ports:
         - containerPort: 5000
         env:
