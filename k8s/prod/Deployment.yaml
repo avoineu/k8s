@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mini-store-deployment
-  namespace: dev 
+  namespace: prod
 spec:
   replicas: 2
   selector:
@@ -15,13 +15,14 @@ spec:
     spec:
       containers:
       - name: mini-store
-        image: samirbch/mini-store:v21
+        image: samirbch/mini-store:v19
         ports:
         - containerPort: 5000
         env:
         - name: MONGO_URI
-          value: "mongodb://mongos-svc.dev.svc.cluster.local:27018/shop"
+          value: "mongodb://mongodb-0.mongodb-service.prod.svc.cluster.local:27017,mongodb-1.mongodb-service.prod.svc.cluster.local:27017,mongodb-2.mongodb-service.prod.svc.cluster.local:27017/store?replicaSet=rs0"
         - name: REDIS_HOST
-          value: "redis.dev.svc.cluster.local"
+          value: "redis.prod.svc.cluster.local"
+
       imagePullSecrets:
       - name: docker-secret   # ← ajouter ici
