@@ -37,6 +37,12 @@ Voici la structure interne final du projet
 │   ├── mongo-pvc.yaml
 │   ├── mongodb-replica-statefulset.yaml
 │   ├── mongodb-service.yaml
+│   ├── prod
+│   │   ├── Deployment.yaml
+│   │   ├── Ingress.yaml
+│   │   ├── Service.yaml
+│   │   ├── mongodb-replica-statefulset.yaml
+│   │   └── mongodb-service.yaml
 │   ├── products.json
 │   ├── redis-service.yaml
 │   ├── redis-statefulset.yaml
@@ -67,7 +73,7 @@ Script shell permettant de synchroniser automatiquement le namespace test avec l
 Il est utilisé dans un CronJob Kubernetes pour vérifier toutes les 5 minutes si la version du namespace test est à jour comparé à celle sur DockerHub, et déclencher un kubectl rollout restart si ce n'est pas le cas.
 
 ### dossier k8s
-Contient tous les manifests Kubernetes pour déployer l’application et ses dépendances. Les manifests sont principalement pour le namespace dev, mais certains fichiers permettent aussi de créer un environnement de test ou de synchronisation automatique.
+Contient tous les manifests Kubernetes pour déployer l’application et ses dépendances. Les manifests sont principalement pour le namespace dev, mais certains fichiers permettent aussi de créer un environnement de test, production ou de synchronisation automatique.
 
 #### dossier mongo
 Contient tous les manifests pour déployer le cluster MongoDB sharded et ses services :
@@ -90,13 +96,23 @@ Contient tous les manifests pour déployer le cluster MongoDB sharded et ses ser
 
 Manifests Kubernetes pour déployer un environnement de test, isolé du namespace dev :
 
-* `Deployment.yaml` : déploiement de l’application Mini-Store pour tests.
+* `Deployment.yaml` : déploiement de l’application Mini-Store pour test.
 
 * `Ingress.yaml` : expose l’application de test via un Ingress.
 
 * `Service.yaml` : service NodePort ou ClusterIP pour le test.
 
 * `mongo-pvc.yaml / mongodb-replica-statefulset.yaml / mongodb-service.yaml` : MongoDB pour l’environnement de test.
+
+#### dossier prod
+Manifests Kubernetes pour déployer un environnement de production, isolé du namespace dev et test :
+* `Deployment.yaml` : déploiement de l’application Mini-Store pour prod.
+
+* `Ingress.yaml` : expose l’application de prod via un Ingress.
+
+* `Service.yaml` : service NodePort ou ClusterIP pour la prod.
+
+* `mongodb-replica-statefulset.yaml / mongodb-service.yaml` : MongoDB pour l’environnement de prod.
 
  #### autres fichiers dans k8s
 
@@ -116,7 +132,7 @@ Manifests Kubernetes pour déployer un environnement de test, isolé du namespac
 
 `products.json` : fichier JSON contenant les produits initiaux.
 
-`redis-service.yaml / redis-statefulset.yaml` : manifests pour déployer Redis si utilisé.
+`redis-service.yaml / redis-statefulset.yaml` : manifests pour déployer Redis.
 
 ### dossier tests
 Contient les tests unitaires de l’application.
@@ -125,7 +141,7 @@ Contient les tests unitaires de l’application.
 
 ## 2. Namespaces
 
-L’application principale est pour l'instant déployée dans le namespace `dev`, à chaque push sur github, la dernière version de l'image `dev` est publié sur DockerHub et elle est alors en maximum 5 minutes pulled et deployé par le Cronjob dans le namespace `test`
+L’application principale est pour l'instant déployée dans le namespace `dev`, à chaque push sur github, la dernière version de l'image `dev` est publié sur DockerHub et elle est alors en maximum 5 minutes pulled et deployé par le Cronjob dans le namespace `test`. Le namespace `test` permet de tester une version plus au point de l'application. Le namespace `prod` met à disposition l'application auprès de tout les utilisateurs. 
 
 ## 3. Cluster Setup Instructions
 
@@ -145,16 +161,18 @@ kubectl get nodes
 
 #### Étape 2 : Création des namespaces
 
-Le projet utilise trois namespaces :
+Le projet utilise quatre namespaces :
 
 * **dev** : environnement principal de développement
 * **test** : environnement secondaire, où toute l'équipe de développement peut tester la version final actuelle de l'application.
+* **prod** : environnement de production, hébergeant la version stable et validée de l’application, accessible aux utilisateurs finaux  
 * **kubernetes-dashboard** : pour le monitoring du cluster
 
 Créer les namespaces (si non existants) :
 ```
 kubectl create ns dev
 kubectl create ns test
+kubectl create ns prod
 kubectl create ns kubernetes-dashboard
 ```
 #### Étape 3 : Déploiement de l’application et des dépendances
@@ -164,42 +182,62 @@ kubectl apply -f k8s/ -R
 ```
 Cela déploie :
 * L’application **Flask Mini-Store**
-* **MongoDB** 
+* **MongoDB** (base de données principale)
 * **Redis** (cache)
 * **CronJob** d’auto-sync
 * **Ingress Controller**
+* les **Services, ConfigMaps, et secrets** nécessaires
 
-Vérifier ensuite le statut des pods :
+Vérifier ensuite le statut des pods et des ressources déployées : :
 
 ```
 kubectl get pods -A
+kubectl get svc -A
+kubectl get pvc -A
 ```
+Tous les pods doivent être dans l’état Running ou Completed avant de passer à l’étape suivante.
 
 #### Étape 4 : Configuration du DNS local et accès via Ingress
-Pour accéder à l’application via Ingress, ajouter les entrées suivantes dans `/etc/hosts` :
+Pour accéder à l’application via Ingress, ajouter les entrées suivantes dans le fichier `/etc/hosts` :
 ```
 127.0.0.1       dev.localhost
 127.0.0.1       test.localhost
+127.0.0.1       prod.localhost
 ```
 Puis vérifier les Ingress actifs :
 ```
 kubectl get ingress -A
 ```
-Une fois le contrôleur NGINX en place, l’application est accessible sur :
+Une fois le contrôleur NGINX déployé et configuré, les environnements deviennent accessibles :
 
 * http://dev.localhost pour l’environnement de développement
 
 * http://test.localhost pour l’environnement de test
 
-### 3.2 Cloud migration guide
+* http://prod.localhost pour l’environnement de production
 
-#### Gestion des secrets 
-Les credentials sensibles (comme `KUBE_CONFIG`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`) sont stockés sous forme de **GitHub Secrets**.
+#### Étape 5 : Vérification du cluster
+S'assurer que tout le cluster fonctionne correctement : 
+```
+kubectl get all -A
+```
 
 ## 4. CI/CD Pipeline 
 
 Le déploiement continu du projet est géré via **GitHub Actions**.  
 Chaque push sur la branche principale déclenche automatiquement un pipeline complet qui assure la qualité du code, la création et la mise à jour des images Docker, puis leur propagation dans le cluster.
+
+#### Gestion des secrets 
+Les credentials sensibles (comme `KUBE_CONFIG`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`) sont stockés sous forme de **GitHub Secrets** afin de sécuriser les accès lors du déploiement automatique.
+
+* **`KUBE_CONFIG`** :  Contient le contenu du fichier `~/.kube/config` permettant à GitHub Actions d’interagir avec le cluster Kubernetes. Pour l’obtenir, exécuter sur la machine ou le cluster concerné : 
+```
+  cat ~/.kube/config
+  ```
+
+* **`DOCKER_USERNAME`** : Nom d’utilisateur du compte Docker Hub utilisé pour builder et pousser les images Docker.
+
+* **`DOCKER_PASSWORD`** : Mot de passe ou token d’accès personnel associé au compte Docker Hub (Settings → Security → New Access Token).
 
 ### 4.1 Étapes du pipeline GitHub Actions
 
@@ -237,7 +275,7 @@ Une fois l’image publiée sur DockerHub, la mise à jour du cluster est automa
 
 Cela garantit que le namespace **test** reflète toujours la version la plus récente validée par le pipeline.
 
-### Avantage
+### Avantages
 
 Ce mécanisme permet de découpler complètement :  
 
@@ -272,7 +310,7 @@ Service headless (clusterIP: None) utilisé pour la découverte automatique des 
 * `mongo-pvc.yaml` :
 Définit les PersistentVolumeClaims (PVC) qui assurent la conservation des données même si un pod redémarre.
 
-Une fois cela fait, il suffit d'apply les fichiers :
+Une fois cela fait, il suffit d'apply les fichiers à l'aide de ces commandes :
 ```
 `kubectl apply -f mongo-pvc.yaml -n test`
 
@@ -281,12 +319,12 @@ Une fois cela fait, il suffit d'apply les fichiers :
 `kubectl apply -f mongodb-statefulset.yaml -n test`
 ```
 
-Pour se connecter au premier pod :
+Il faut alors se connecter au primary pod (genéralement le premier pod) à l'aide de cette commande :
 ```
 'kubectl exec -it mongodb-0 -n test -- mongosh'
 ```
 
-Ensuite il faut initialiser le Replica Set :
+Alors, il faut initialiser le Replica Set :
 
 ```
 rs.initiate({
@@ -306,15 +344,15 @@ Pour vérifier :
 rs.status()
 ```
 #### Accès et debug
-Pour accéder au pod et ajouter un item dans la DB :
+Pour accéder au pod, ajouter un item et afficher le contenu de la DB :
 ```
-`kubectl exec -it mongodb-0 -n test -- mongosh `
+kubectl exec -it mongodb-0 -n test -- mongosh 
 
-`use shop `
+use shop 
 
-`db.items.insertOne({ id: 1, name: "T-shirt", price: 19.99 })`
+db.items.insertOne({ id: 1, name: "T-shirt", price: 19.99 })
 
-`db.items.find() `
+db.items.find() 
 ```
 ### 5.2 Dashboard
 #### A) Mise en place
@@ -324,7 +362,7 @@ Pour accéder au pod et ajouter un item dans la DB :
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.9.0/aio/deploy/recommended.yaml`
 ```
 
-* Étape 2 : Vérifier le déploiement, les pods doivent être en running: 
+* Étape 2 : Vérifier le déploiement, les pods doivent être en état **running** : 
 ```
 kubectl get pods -n kubernetes-dashboard
 ```
@@ -343,8 +381,10 @@ kubectl proxy
 
 Aller sur votre navigateur et lancer : http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 
-Choisir l’option « Token » et entrer le Token générer précédemment.
-Une fois cela fait, le dashboard sera fonctionnel.
+Choisir l’option « Token » et entrer le Token généré précédemment.
+Une fois cela fait, le dashboard sera fonctionnel. 
+
+Il suffit alors d'aller dans la section `deployments`pour mettre à l'échelle (scaling) les pods qu'on veut au nombre que l'on veut. On peut également depuis le dashboard avoir une idée en instantanée de l'usage du CPU et de la mémoire faites par nos pods.
 
 
 ### 5.3 Sharding
@@ -352,21 +392,44 @@ Une fois cela fait, le dashboard sera fonctionnel.
 Le Sharding est une technique de scaling horizontal utilisée pour répartir les données d’une base MongoDB sur plusieurs nœuds.
 
 #### Architecture
+L’infrastructure MongoDB en mode Sharded Cluster repose sur **trois composants principaux** :
 
-`config-server-statefulset.yaml` → déploie les Config Servers qui stockent les métadonnées du cluster.
+1. **Config Servers**  
+   - Stockent les **métadonnées du cluster**, notamment la répartition des chunks (fragments de données) entre les shards.  
+   - Déployés via le fichier :  
+     ```yaml
+     config-server-statefulset.yaml
+     ```
+   - Ces pods sont regroupés dans un **StatefulSet** (souvent 3 réplicas) afin d’assurer la cohérence et la haute disponibilité.
 
-`shard1-statefulset.yaml, shard2-statefulset.yaml` → déploient les Shards contenant les données réelles (chaque shard est un ReplicaSet).
+2. **Shards**  
+   - Chaque shard contient une **partie des données** de la base.  
+   - Chaque shard est lui-même un **ReplicaSet**, garantissant la redondance et la tolérance aux pannes.  
+   - Déployés via :  
+     ```yaml
+     shard1-statefulset.yaml, shard2-statefulset.yaml
+     ```
+   - Chaque StatefulSet crée automatiquement des **PersistentVolumeClaims (PVC)** pour stocker durablement les données sur les disques associés.
 
-`mongos-deployment.yaml` → déploie le Router (mongos) qui oriente les requêtes vers le bon shard.
+3. **Mongos (Query Router)**  
+   - Le composant **mongos** agit comme un **routeur de requêtes** : il reçoit les requêtes clientes et les oriente vers le bon shard selon la clé de sharding.  
+   - Les clients et les applications interagissent **uniquement avec mongos**, jamais directement avec les shards.  
+   - Déployé via :  
+     ```yaml
+     mongos-deployment.yaml
+     ```
+   - Il peut être répliqué (plusieurs pods mongos) pour supporter une charge importante et assurer la haute disponibilité.
 
 
 
 #### Initialisation 
 
-Se connecter au pod : 'kubectl exec -it mongos-xxxxxxxx -n test -- mongosh'
+Pour se connecter au pod, on peut lancer cette commande : 
+```
+'kubectl exec -it mongos-xxxxxxxx -n test -- mongosh'
+```
 
-
-Puis executer les commandes suivantes afin d'initialiser le config-server, les shards et ensuite d'activer le sharding :
+Puis executer les commandes suivantes afin d'initialiser le **config-server**, les **shards** et ensuite d'activer le **sharding** :
 
 ```
 // Init config server
@@ -419,13 +482,12 @@ Redis est utilisé ici comme système de cache pour accélérer les requêtes en
 
 #### Déploiment
 
-Reprendre les configs ` redis-service.yaml `et `redis-statefulset.yaml ` sur GitHub et les apply avec : 
+Reprendre les configs ` redis-service.yaml `et `redis-statefulset.yaml` et les apply avec : 
 ```
 kubectl apply -f redis-service.yaml -n redis
 
 kubectl apply -f redis-statefulset.yaml -n redis
 ```
-
 
 Vérifier que Redis est en cours d’éxecution: 
 
@@ -435,17 +497,16 @@ kubectl get pods -n redis -o wide
 kubectl get pvc -n redis
 ```
 
-
 #### Test
 
-Pour tester si les pods redis marchent bien il suffit de s’y connecter avec : 
+Afin de tester si les pods redis marchent bien il suffit de s’y connecter avec : 
 
 ```
 kubectl exec -it redis-0 -n redis -- redis-cli
 ```
 
 
-Ensuite faireces deux commandes pour obtenir la réponse. : 
+Ensuite faire ces deux commandes pour obtenir la réponse. : 
 
 ```
 SET test "hello world"
@@ -456,7 +517,7 @@ GET test
 
 #### Intégration
 
-Pour l’intégrer à l’app il faut que dans le `deployment.yaml` il y ait une value **redis.redis.svc.cluster.local** qui correspond au Service headless crée dans les configs. Ensuite dans votre app il faut importer avec : 
+Pour intégrer redis à l’app, il faut que dans le `deployment.yaml`, il y ait une value **redis.redis.svc.cluster.local** qui correspond au Service headless crée dans les configs. Ensuite dans votre app il faut l'importer avec : 
 ```
 import redis
 ```
@@ -464,7 +525,8 @@ import redis
 
 Et le setup : 
 ```
-REDIS_HOST = os.getenv("REDIS_HOST", "redis.dev.svc.cluster.local") # nom du service Redis REDIS_PORT = 6379 cache = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True) 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis.dev.svc.cluster.local")
+REDIS_PORT = 6379 cache = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True) 
 ```
 
 
@@ -473,55 +535,111 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis.dev.svc.cluster.local") # nom du ser
 
 Pour notre app, à chaque produit ajouter, on peut vérifier le cache simplement avec :
 ```
-kubectl exec -it redis-1 -n dev -- redis-cli GET items
+kubectl exec -it redis-0 -n dev -- redis-cli GET items
 ```
 
 
 
 ## 6. Guide pour les nouveaux developpeurs 
+Ce guide a pour objectif d’aider tout nouveau développeur à prendre en main le projet, du setup local jusqu’au déploiement sur le cluster Kubernetes.
 
-### 6.1 Installation et préparation
+### 6.1 Prérequis
 
-Installer Python 3.10+
+Avant de commencer, assurez-vous d’avoir installé :
 
-Installer les dépendances : `pip install -r requirements.txt`
+- **Python 3.10+**
+- **Docker** (si vous souhaitez builder les images localement)
+- **kubectl** (pour interagir avec le cluster Kubernetes)
+- **Git** (pour cloner et contribuer au projet)
+- **Un accès au cluster Kubernetes** (namespace `dev` ou `test`)
 
-Cloner le projet : 
-`git clone https://github.com/avoineu/k8s.git`
+### 6.2 Installation du projet
 
-`cd <nom-du-projet>`
+Cloner le dépôt GitHub :
+```
+git clone https://github.com/avoineu/k8s.git
 
+cd k8s
+```
 
-### 6.2 Lancer le cluster local
+### 6.3 Lancer le cluster local (mode Kubernetes)
 
-Appliquer les manifests Kubernetes : `kubectl apply -f k8s/`
+Appliquer les manifests Kubernetes pour déployer les ressources nécessaires : 
+```
+kubectl apply -f k8s/
+```
 
-Vérifier les pods en cours d'éxecution : `kubectl get pods -n dev`
+Vérifier que les pods sont bien en cours d’exécution : 
+```
+kubectl get pods -n dev
+```
 
-### 6.3 Tests unitaires
+Pour visualiser les services et ingress :
+```
+kubectl get svc,ingress -n dev
+```
 
-Pour effectuer dles tests unitaires :
+### 6.4 Lancer l’application 
 
--Soit lancer `pytest test_app.py/`
+Dans Kubernetes : `kubectl apply` suffit pour que les pods s’exécutent automatiquement.
 
--Soit push sur GitHub
+Si vous souhaitez simplement tester le code Python sans passer par Kubernetes :
+```
+python app/app.py
+```
+L’application Flask démarrera alors sur `http://127.0.0.1:5000`.
 
-### 6.4 Lancer l’application en local
+Ce mode est utile pour le développement rapide ou le débogage avant intégration au cluster.
 
-Dans Kubernetes → kubectl apply suffit pour que les pods s’exécutent automatiquement.
+### 6.5 Tests unitaires
 
-Local (hors K8s) → on peut lancer python app/app.py pour tester sans cluster.
+Avant tout push, il est recommandé d’exécuter les tests unitaires :
+```
+pytest tests/
+```
+Aussi, un push sur la branche principale déclenchera automatiquement le pipeline GitHub Actions qui exécute ces tests dans le CI/CD.
 
-### 6.5 Déploiement sur cluster
+### 6.6 Déploiement sur le cluster kubernetes
 
-Pour déployer sur un namespace : `kubectl apply -f k8s/ -n dev`
+Pour (re)déployer une version sur un namespace spécifique :
+```
+kubectl apply -f k8s/ -n dev
+```
+Pour un environnement de test :
+```
+kubectl apply -f k8s/ -n test
+```
+À noter que le namespace `prod` est réservé aux versions stables et validées.
 
-### 7.6 Logs & Debug
+### 6.7 Logs & Debug
+Afficher les logs d’un pod en cours d’exécution :
+```
+kubectl logs -f <nom-du-pod> -n dev
+```
+Entrer dans un pod pour le débogage :
+```
+kubectl exec -it <nom-du-pod> -n dev -- /bin/bash
+```
+### 6.8 Accès à MongoDB pour inspection
 
-Voir les logs : `kubectl logs -f <nom-du-pod> -n dev`
+Se connecter à la base MongoDB :
+```
+kubectl exec -it mongodb-0 -n dev -- mongosh
+```
+Puis interroger la base :
+```
+use shop
+db.items.find().pretty()
+```
 
-Accès à MongoDB pour inspection : `kubectl exec -it mongodb-0 -n dev -- mongosh `
+### 6.9 Bonnes pratiques 
 
-`use shop `
+* Tester vos changements localement **avant le push**.
 
-`db.items.find().pretty()`
+* Ne jamais déployer directement sur `prod` sans validation.
+
+* Surveillez les pods avec :
+```
+kubectl get pods -A
+```
+* Vérifiez régulièrement l’état du pipeline GitHub Actions.
